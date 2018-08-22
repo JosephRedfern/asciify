@@ -24,12 +24,25 @@ def grayscalify(image):
     return image.convert('L')
 
 '''
-method modify():
-    - replaces every pixel with a character whose intensity is similar
+method get_ansi_color():
+    - returns ANSI escape code for the given color.
+    - requires Truecolor support from terminal
 '''
-def modify(image, buckets=25):
+def get_ansi_color(value):
+    r, g, b = value
+    return '\x1b[38;2;{r};{g};{b}m'.format(r=str(r).zfill(3), g=str(g).zfill(3), b=str(b).zfill(3))
+
+'''
+method modify():
+    - replaces every pixel with a character whose intensity is similar.
+    - takes grayscale image and rgb image, grayscale used to choose intensity,
+      rgb image used for pixel colour.
+'''
+def modify(image_g, image, buckets=25):
+    initial_pixels_g = list(image_g.getdata())
     initial_pixels = list(image.getdata())
-    new_pixels = [ASCII_CHARS[pixel_value//buckets] for pixel_value in initial_pixels]
+
+    new_pixels = [get_ansi_color(initial_pixels[i]) + ASCII_CHARS[pixel_value//buckets] for i, pixel_value in enumerate(initial_pixels_g)]
     return ''.join(new_pixels)
 
 '''
@@ -38,13 +51,16 @@ method do():
 '''
 def do(image, new_width=100):
     image = resize(image)
-    image = grayscalify(image)
+    image_g = grayscalify(image)
 
-    pixels = modify(image)
+    pixels = modify(image_g, image)
+
     len_pixels = len(pixels)
 
+    pixel_size = 1 + len(get_ansi_color((255,255,255)))
+
     # Construct the image from the character list
-    new_image = [pixels[index:index+new_width] for index in range(0, len_pixels, new_width)]
+    new_image = [pixels[index:index+new_width*pixel_size] for index in range(0, len_pixels, new_width*pixel_size)]
 
     return '\n'.join(new_image)
 
@@ -70,7 +86,7 @@ def runner(path):
     # Else, to write into a file
     # Note: This text file will be created by default under
     #       the same directory as this python file,
-    #       NOT in the directory from where the image is pulled. 
+    #       NOT in the directory from where the image is pulled.
     f = open('img.txt','w')
     f.write(image)
     f.close()
